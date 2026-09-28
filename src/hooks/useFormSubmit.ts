@@ -65,11 +65,14 @@ export function useFormSubmit(url: string) {
         ''
       ).trim();
 
+      const isSpamResponse = /spam/i.test(message) || /spam/i.test(responseText);
+      const hasOkCode = parsed?.code === 'OK';
+      const hasFallbackSuccess = response.ok && (!parsed || Object.keys(parsed).length === 0 || parsed?.code === undefined);
+
       const failed =
         !response.ok ||
-        parsed?.code !== 'OK' ||
-        /spam/i.test(message) ||
-        /spam/i.test(responseText);
+        isSpamResponse ||
+        (!hasOkCode && !hasFallbackSuccess && parsed?.code !== undefined);
 
       if (failed) {
         setStatus('error');
