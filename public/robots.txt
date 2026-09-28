@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /properties-for-sale
+Allow: /properties-for-rent
+Allow: /sell-your-property
+Allow: /services
+Allow: /about
+Allow: /faq
+Allow: /contact
+Allow: /blog
+Sitemap: https://zaminzameen.com/sitemap.xml

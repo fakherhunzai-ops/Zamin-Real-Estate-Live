@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Typography */
+  --font-heading: 'Playfair Display', ui-serif, Georgia, serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-label: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  /* Background — warm off white (#FAF9F6) / light green (#F2F6F3) / border (#E5E8E5) */
+  --background-50: 0.982 0.004 90;
+  --background-100: 0.969 0.006 154;
+  --background-200: 0.928 0.005 145;
+  --background-300: 0.878 0.006 145;
+  --background-400: 0.800 0.007 145;
+  --background-500: 0.700 0.008 145;
+  --background-600: 0.580 0.008 145;
+  --background-700: 0.460 0.008 145;
+  --background-800: 0.350 0.008 145;
+  --background-900: 0.260 0.007 145;
+  --background-950: 0.190 0.006 145;
+
+  /* Foreground — main text (#17221C) / muted (#68736D) */
+  --foreground-50: 0.975 0.003 162;
+  --foreground-100: 0.935 0.005 162;
+  --foreground-200: 0.870 0.007 162;
+  --foreground-300: 0.790 0.009 162;
+  --foreground-400: 0.700 0.011 162;
+  --foreground-500: 0.620 0.012 162;
+  --foreground-600: 0.544 0.013 162;
+  --foreground-700: 0.440 0.013 162;
+  --foreground-800: 0.355 0.014 161;
+  --foreground-900: 0.295 0.016 161;
+  --foreground-950: 0.239 0.019 161;
+
+  /* Primary — deep forest green (#1C4633 / #123625) */
+  --primary-50: 0.965 0.016 162;
+  --primary-100: 0.900 0.040 162;
+  --primary-200: 0.780 0.065 162;
+  --primary-300: 0.620 0.080 162;
+  --primary-400: 0.470 0.070 162;
+  --primary-500: 0.358 0.058 162;
+  --primary-600: 0.301 0.052 161;
+  --primary-700: 0.250 0.044 161;
+  --primary-800: 0.205 0.036 161;
+  --primary-900: 0.165 0.030 161;
+  --primary-950: 0.125 0.023 161;
+
+  /* Accent — fresh emerald green (replaces gold; a brighter green second direction) */
+  --accent-50: 0.972 0.024 152;
+  --accent-100: 0.938 0.055 151;
+  --accent-200: 0.884 0.086 150;
+  --accent-300: 0.818 0.112 150;
+  --accent-400: 0.712 0.126 150;
+  --accent-500: 0.624 0.130 150;
+  --accent-600: 0.545 0.116 150;
+  --accent-700: 0.462 0.099 150;
+  --accent-800: 0.382 0.082 150;
+  --accent-900: 0.308 0.066 150;
+  --accent-950: 0.232 0.050 150;
+
+  /* Secondary — muted sage support */
+  --secondary-50: 0.972 0.008 158;
+  --secondary-100: 0.940 0.014 158;
+  --secondary-200: 0.882 0.024 158;
+  --secondary-300: 0.800 0.036 158;
+  --secondary-400: 0.710 0.045 158;
+  --secondary-500: 0.620 0.045 158;
+  --secondary-600: 0.530 0.042 158;
+  --secondary-700: 0.440 0.038 158;
+  --secondary-800: 0.360 0.033 158;
+  --secondary-900: 0.280 0.028 158;
+  --secondary-950: 0.200 0.022 158;
+}
+
+.dark {
+  --background-50: 0.150 0.012 160;
+  --background-100: 0.200 0.014 160;
+  --background-200: 0.256 0.016 160;
+  --background-300: 0.320 0.018 160;
+  --background-400: 0.400 0.018 160;
+  --background-500: 0.500 0.016 160;
+  --background-600: 0.600 0.014 160;
+  --background-700: 0.700 0.012 160;
+  --background-800: 0.800 0.010 160;
+  --background-900: 0.880 0.008 160;
+  --background-950: 0.950 0.006 160;
+
+  --foreground-50: 0.128 0.024 161;
+  --foreground-100: 0.170 0.031 161;
+  --foreground-200: 0.212 0.038 161;
+  --foreground-300: 0.256 0.045 161;
+  --foreground-400: 0.301 0.052 161;
+  --foreground-500: 0.358 0.058 162;
+  --foreground-600: 0.560 0.080 162;
+  --foreground-700: 0.740 0.078 162;
+  --foreground-800: 0.842 0.058 162;
+  --foreground-900: 0.918 0.038 162;
+  --foreground-950: 0.966 0.016 162;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: oklch(var(--background-50));
+    color: oklch(var(--foreground-900));
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    color: oklch(var(--foreground-950));
+  }
+
+  :focus-visible {
+    outline: 2px solid oklch(var(--accent-500));
+    outline-offset: 2px;
+  }
+}
+
+/* Supplementary form fields (anti-spam honeypot) */
+.form-supplementary {
+  position: absolute !important;
+  left: -9999px !important;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-fade-up-delay-1 {
+    animation-delay: 0.15s;
+  }
+  .animate-fade-up-delay-2 {
+    animation-delay: 0.3s;
+  }
+  .animate-fade-up-delay-3 {
+    animation-delay: 0.45s;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Printable calculator summary — only the .print-area shows when printing */
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+
+  .print-area {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+  }
+}
