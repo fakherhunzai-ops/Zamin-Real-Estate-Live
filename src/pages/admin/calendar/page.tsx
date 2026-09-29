@@ -280,7 +280,7 @@ export default function AdminCalendarPage() {
                             : chip.tone === 'maintenance'
                               ? 'bg-accent-500 text-background-50'
                               : 'bg-background-300 text-foreground-800';
-                        return chip.to ? (
+                        return 'to' in chip ? (
                           <Link key={chip.id} to={chip.to} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-semibold ${chipClass}`} title={chip.label}>
                             {chip.label}
                           </Link>
