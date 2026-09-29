@@ -1,100 +1,161 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/pages/admin/components/AdminLayout';
 import {
   Badge,
-  BookingStatusBadge,
   Card,
-  EmptyState,
   ErrorState,
   LoadingBlock,
   SectionLabel,
   StatCard,
   btnGhost,
-  btnSmall,
   btnPrimary,
-  tableWrap,
-  theadClass,
-  tdClass,
-  thClass,
+  btnSmall,
 } from '@/pages/admin/components/AdminUI';
-import { useAdminOverview } from '@/hooks/useAdminOverview';
 import { formatPKR } from '@/utils/stays';
-import type { Booking } from '@/types/stays';
 
-function locationOf(booking: Booking): string {
-  return [booking.stay?.area?.name, booking.stay?.destination?.name].filter(Boolean).join(', ') || '—';
-}
+const defaultSummary = {
+  totalProperties: 0,
+  publishedProperties: 0,
+  pendingListings: 0,
+  soldProperties: 0,
+  rentedProperties: 0,
+  saleProperties: 0,
+  rentProperties: 0,
+  newEnquiries: 0,
+  valuationRequests: 0,
+  totalStays: 0,
+  publishedStays: 0,
+  pendingStays: 0,
+  activeBookings: 0,
+  upcomingCheckIns: 0,
+  upcomingCheckOuts: 0,
+  occupancyRate: 0,
+  bookingRevenue: 0,
+  pendingPayouts: 0,
+  users: 0,
+  agents: 0,
+};
 
-function BookingRows({ rows, dateLabel }: { rows: Booking[]; dateLabel: 'check_in' | 'check_out' }) {
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        compact
-        icon="ri-calendar-line"
-        title={dateLabel === 'check_in' ? 'No upcoming check-ins.' : 'No upcoming check-outs.'}
-      />
-    );
-  }
-  return (
-    <div className={tableWrap}>
-      <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className={theadClass}>
-          <tr>
-            <th className={thClass}>Guest</th>
-            <th className={thClass}>Stay</th>
-            <th className={thClass}>Location</th>
-            <th className={thClass}>{dateLabel === 'check_in' ? 'Check-in' : 'Check-out'}</th>
-            <th className={thClass}>Guests</th>
-            <th className={thClass}>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, 6).map((booking) => (
-            <tr key={booking.id} className="border-t border-background-100">
-              <td className={tdClass}>
-                <Link to={`/admin/bookings/${booking.id}`} className="font-medium text-foreground-950 hover:text-primary-700">
-                  {booking.guest_name}
-                </Link>
-                <p className="text-xs text-foreground-500">{booking.reference}</p>
-              </td>
-              <td className={`${tdClass} text-foreground-700`}>{booking.stay?.title ?? '—'}</td>
-              <td className={`${tdClass} text-foreground-600`}>{locationOf(booking)}</td>
-              <td className={`${tdClass} font-medium text-foreground-800`}>
-                {dateLabel === 'check_in' ? booking.check_in : booking.check_out}
-              </td>
-              <td className={`${tdClass} text-foreground-600`}>{booking.guests}</td>
-              <td className={tdClass}>
-                <BookingStatusBadge status={booking.status} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+export default function AdminDashboardPage() {
+  const [summary, setSummary] = useState(defaultSummary);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const [propertiesResult, staysResult, bookingsResult, usersResult, agentsResult, enquiriesResult, valuationsResult] =
+          await Promise.allSettled([
+            supabase.from('properties').select('id, listing_type, status'),
+            supabase.from('stays').select('id, status'),
+            supabase.from('bookings').select('id, status, total, currency'),
+            supabase.from('profiles').select('id'),
+            supabase.from('agents').select('id'),
+            supabase.from('enquiries').select('id, status'),
+            supabase.from('valuations').select('id, status'),
+          ]);
+
+        const propertyRows = propertiesResult.status === 'fulfilled' ? (propertiesResult.value.data ?? []) : [];
+        const stayRows = staysResult.status === 'fulfilled' ? (staysResult.value.data ?? []) : [];
+        const bookingRows = bookingsResult.status === 'fulfilled' ? (bookingsResult.value.data ?? []) : [];
+        const userRows = usersResult.status === 'fulfilled' ? (usersResult.value.data ?? []) : [];
+        const agentRows = agentsResult.status === 'fulfilled' ? (agentsResult.value.data ?? []) : [];
+        const enquiryRows = enquiriesResult.status === 'fulfilled' ? (enquiriesResult.value.data ?? []) : [];
+        const valuationRows = valuationsResult.status === 'fulfilled' ? (valuationsResult.value.data ?? []) : [];
+
+        const nextSummary = {
+          totalProperties: propertyRows.length,
+          publishedProperties: propertyRows.filter((item: any) => ['published', 'PUBLISHED'].includes(item.status)).length,
+          pendingListings: propertyRows.filter((item: any) => ['pending', 'PENDING'].includes(item.status)).length,
+          soldProperties: propertyRows.filter((item: any) => ['sold', 'SOLD'].includes(item.status)).length,
+          rentedProperties: propertyRows.filter((item: any) => ['rented', 'RENTED'].includes(item.status)).length,
+          saleProperties: propertyRows.filter((item: any) => item.listing_type === 'sale' || item.listing_type === 'SALE').length,
+          rentProperties: propertyRows.filter((item: any) => item.listing_type === 'rent' || item.listing_type === 'RENT').length,
+          newEnquiries: enquiryRows.filter((item: any) => ['new', 'NEW'].includes(item.status)).length,
+          valuationRequests: valuationRows.filter((item: any) => ['new', 'NEW'].includes(item.status)).length,
+          totalStays: stayRows.length,
+          publishedStays: stayRows.filter((item: any) => ['published', 'PUBLISHED'].includes(item.status)).length,
+          pendingStays: stayRows.filter((item: any) => ['pending', 'PENDING'].includes(item.status)).length,
+          activeBookings: bookingRows.filter((item: any) => ['confirmed', 'CONFIRMED', 'checked_in', 'CHECKED_IN'].includes(item.status)).length,
+          upcomingCheckIns: bookingRows.filter((item: any) => item.status === 'confirmed' || item.status === 'CONFIRMED').length,
+          upcomingCheckOuts: bookingRows.filter((item: any) => item.status === 'checked_in' || item.status === 'CHECKED_IN').length,
+          occupancyRate: stayRows.length ? Math.min(100, Math.round((bookingRows.length / stayRows.length) * 100)) : 0,
+          bookingRevenue: bookingRows.reduce((sum, item: any) => sum + Number(item.total || 0), 0),
+          pendingPayouts: 0,
+          users: userRows.length,
+          agents: agentRows.length,
+        };
+
+        if (!active) return;
+        setSummary(nextSummary);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Could not load the current dashboard metrics.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const realEstateStats = useMemo(
+    () => [
+      { label: 'Total Properties', value: summary.totalProperties, icon: 'ri-home-office-line', tone: 'primary' },
+      { label: 'Published', value: summary.publishedProperties, icon: 'ri-upload-cloud-2-line' },
+      { label: 'For Sale', value: summary.saleProperties, icon: 'ri-price-tag-3-line' },
+      { label: 'For Rent', value: summary.rentProperties, icon: 'ri-key-2-line' },
+      { label: 'Pending Listings', value: summary.pendingListings, icon: 'ri-time-line', tone: 'accent' },
+      { label: 'Sold', value: summary.soldProperties, icon: 'ri-checkbox-circle-line' },
+      { label: 'Rented', value: summary.rentedProperties, icon: 'ri-home-2-line' },
+      { label: 'New Enquiries', value: summary.newEnquiries, icon: 'ri-mail-line' },
+      { label: 'Valuation Requests', value: summary.valuationRequests, icon: 'ri-scales-3-line' },
+    ],
+    [summary],
   );
-}
 
-export default function AdminStaysDashboardPage() {
-  const {
-    metrics,
-    upcomingCheckInList,
-    upcomingCheckOutList,
-    pendingStays,
-    recentBookings,
-    alerts,
-    loading,
-    error,
-    refetch,
-  } = useAdminOverview();
+  const staysStats = useMemo(
+    () => [
+      { label: 'Total Stays', value: summary.totalStays, icon: 'ri-hotel-line', tone: 'primary' },
+      { label: 'Published Stays', value: summary.publishedStays, icon: 'ri-check-double-line' },
+      { label: 'Active Bookings', value: summary.activeBookings, icon: 'ri-calendar-check-line' },
+      { label: 'Upcoming Check-ins', value: summary.upcomingCheckIns, icon: 'ri-login-circle-line' },
+      { label: 'Upcoming Check-outs', value: summary.upcomingCheckOuts, icon: 'ri-logout-circle-line' },
+      { label: 'Pending Verification', value: summary.pendingStays, icon: 'ri-shield-star-line', tone: 'accent' },
+      { label: 'Occupancy', value: `${summary.occupancyRate}%`, icon: 'ri-pie-chart-2-line' },
+      { label: 'Booking Revenue', value: formatPKR(summary.bookingRevenue), icon: 'ri-money-dollar-circle-line' },
+      { label: 'Pending Payouts', value: formatPKR(summary.pendingPayouts), icon: 'ri-wallet-3-line' },
+    ],
+    [summary],
+  );
+
+  const quickLinks = [
+    { to: '/admin/properties', label: 'All Properties', icon: 'ri-home-office-line', tone: 'primary' },
+    { to: '/admin/enquiries', label: 'Enquiries', icon: 'ri-mail-line', tone: 'secondary' },
+    { to: '/admin/valuations', label: 'Valuations', icon: 'ri-scales-3-line', tone: 'accent' },
+    { to: '/admin/stays', label: 'All Stays', icon: 'ri-hotel-line', tone: 'primary' },
+    { to: '/admin/bookings', label: 'Bookings', icon: 'ri-calendar-check-line', tone: 'secondary' },
+    { to: '/admin/content/homepage', label: 'Website Content', icon: 'ri-layout-grid-line', tone: 'accent' },
+  ];
 
   return (
     <AdminLayout
-      title="ZAMIN Stays Overview"
-      subtitle="Manage bookings, properties, hosts and operations."
+      title="ZAMIN Business Overview"
+      subtitle="Central overview for the ZAMIN property business and ZAMIN Stays operations."
       actions={
         <>
-          <Link to="/admin/bookings" className={btnGhost}>
-            <i className="ri-calendar-check-line text-base"></i> Bookings
+          <Link to="/admin/properties" className={btnGhost}>
+            <i className="ri-home-office-line text-base"></i> Real Estate
           </Link>
           <Link to="/admin/stays/new" className={btnPrimary}>
             <i className="ri-add-line text-base"></i> Add Stay
@@ -103,185 +164,125 @@ export default function AdminStaysDashboardPage() {
       }
     >
       {loading ? (
-        <LoadingBlock label="Loading dashboard…" rows={6} />
+        <LoadingBlock label="Loading business overview…" rows={6} />
       ) : error ? (
-        <ErrorState message="Couldn’t load dashboard data." onRetry={refetch} />
+        <ErrorState message={error} onRetry={() => window.location.reload()} />
       ) : (
         <div className="flex flex-col gap-8">
-          {/* Properties */}
           <section>
-            <SectionLabel className="mb-3">Portfolio</SectionLabel>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Total Stays" value={metrics.totalStays} icon="ri-home-4-line" />
-              <StatCard label="Published Stays" value={metrics.publishedStays} icon="ri-upload-cloud-2-line" tone="primary" />
-              <StatCard label="Pending Verification" value={metrics.pendingVerification} icon="ri-shield-star-line" tone="accent" />
-              <StatCard label="Managed Properties" value={metrics.managedStays} icon="ri-vip-diamond-line" />
+            <SectionLabel className="mb-3">REAL ESTATE</SectionLabel>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {realEstateStats.map((item) => (
+                <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} tone={item.tone as any} />
+              ))}
             </div>
           </section>
 
-          {/* Operations */}
           <section>
-            <SectionLabel className="mb-3">Operations</SectionLabel>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Active Bookings" value={metrics.activeBookings} icon="ri-calendar-check-line" />
-              <StatCard label="Upcoming Check-ins" value={metrics.upcomingCheckIns} icon="ri-login-circle-line" />
-              <StatCard label="Upcoming Check-outs" value={metrics.upcomingCheckOuts} icon="ri-logout-circle-line" />
-              <StatCard
-                label="Occupancy Rate"
-                value={`${metrics.occupancyRate}%`}
-                icon="ri-pie-chart-2-line"
-                hint="Next 30 days, published stays"
-                tone="accent"
-              />
+            <SectionLabel className="mb-3">ZAMIN STAYS</SectionLabel>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {staysStats.map((item) => (
+                <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} tone={item.tone as any} />
+              ))}
             </div>
           </section>
-
-          {/* Financials */}
-          <section>
-            <SectionLabel className="mb-3">Financials</SectionLabel>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                label="Booking Revenue"
-                value={formatPKR(metrics.bookingRevenue)}
-                icon="ri-money-dollar-circle-line"
-                hint="Confirmed & completed bookings"
-                tone="primary"
-              />
-              <StatCard label="ZAMIN Revenue" value={formatPKR(metrics.zaminRevenue)} icon="ri-hand-coin-line" hint="Service fees collected" />
-              <StatCard label="Pending Payouts" value={formatPKR(metrics.pendingPayouts)} icon="ri-wallet-3-line" tone="accent" />
-              <StatCard
-                label="Average Nightly Rate"
-                value={formatPKR(metrics.avgNightlyRate)}
-                icon="ri-price-tag-3-line"
-                hint="Across published stays"
-              />
-            </div>
-          </section>
-
-          {/* Alerts */}
-          <Card
-            title="Operational Alerts"
-            icon="ri-alert-line"
-            actions={<Badge tone="muted">{alerts.length}</Badge>}
-            bodyClassName="p-0"
-          >
-            {alerts.length === 0 ? (
-              <div className="p-5">
-                <EmptyState compact icon="ri-checkbox-circle-line" title="Nothing needs attention right now." />
-              </div>
-            ) : (
-              <ul className="divide-y divide-background-100">
-                {alerts.map((alert) => (
-                  <li key={alert.id}>
-                    <Link to={alert.to ?? '#'} className="flex items-start gap-3 px-5 py-4 transition-colors hover:bg-background-100">
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
-                          alert.tone === 'urgent' ? 'bg-accent-500 text-background-50' : alert.tone === 'warn' ? 'bg-accent-100 text-accent-800' : 'bg-secondary-100 text-secondary-900'
-                        }`}
-                      >
-                        <i className={`${alert.icon} text-base`}></i>
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground-950">{alert.title}</p>
-                        <p className="text-xs text-foreground-600">{alert.message}</p>
-                      </div>
-                      <i className="ri-arrow-right-s-line ml-auto text-foreground-400"></i>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading text-base font-semibold text-foreground-950">Upcoming Check-ins</h2>
-                <Link to="/admin/bookings" className={`${btnSmall} border-background-300 text-foreground-700 hover:bg-background-100`}>
-                  View all
-                </Link>
+            <Card title="Quick actions" icon="ri-dashboard-line" bodyClassName="p-0">
+              <div className="grid gap-3 p-5 sm:grid-cols-2">
+                {quickLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="flex items-center gap-3 rounded-md border border-background-200 bg-background-50 px-3 py-3 text-sm font-medium text-foreground-800 transition-colors hover:border-primary-300 hover:bg-primary-50"
+                  >
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-md ${link.tone === 'primary' ? 'bg-primary-100 text-primary-800' : link.tone === 'secondary' ? 'bg-secondary-100 text-secondary-900' : 'bg-accent-100 text-accent-800'}`}>
+                      <i className={`${link.icon} text-base`}></i>
+                    </span>
+                    {link.label}
+                  </Link>
+                ))}
               </div>
-              <BookingRows rows={upcomingCheckInList} dateLabel="check_in" />
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading text-base font-semibold text-foreground-950">Upcoming Check-outs</h2>
-                <Link to="/admin/operations/cleaning" className={`${btnSmall} border-background-300 text-foreground-700 hover:bg-background-100`}>
-                  Cleaning
-                </Link>
+            </Card>
+
+            <Card title="Priority focus" icon="ri-alert-line" bodyClassName="p-0">
+              <div className="divide-y divide-background-100">
+                <div className="flex items-start gap-3 px-5 py-4">
+                  <Badge tone="secondary" icon="ri-shield-star-line">Urgent</Badge>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground-950">Pending listings and stays</p>
+                    <p className="text-xs text-foreground-600">Review live pipeline items to keep the platform fresh and compliant.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 px-5 py-4">
+                  <Badge tone="muted" icon="ri-mail-line">Leads</Badge>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground-950">Buyer and tenant enquiries</p>
+                    <p className="text-xs text-foreground-600">Respond to new property and valuation leads in the queue.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 px-5 py-4">
+                  <Badge tone="primary" icon="ri-layout-grid-line">Content</Badge>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground-950">Website updates</p>
+                    <p className="text-xs text-foreground-600">Refresh homepage, listing pages and conversion content across the brand.</p>
+                  </div>
+                </div>
               </div>
-              <BookingRows rows={upcomingCheckOutList} dateLabel="check_out" />
-            </div>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <Card
-              title="Pending Verification"
-              icon="ri-shield-star-line"
-              actions={
-                <Link to="/admin/stays/pending" className={`${btnSmall} border-accent-300 text-accent-900 hover:bg-accent-100`}>
-                  Review
-                </Link>
-              }
+              title="Real Estate pipeline"
+              icon="ri-building-2-line"
+              actions={<Link to="/admin/properties" className={btnSmall}>Open</Link>}
               bodyClassName="p-0"
             >
-              {pendingStays.length === 0 ? (
-                <div className="p-5">
-                  <EmptyState compact icon="ri-shield-check-line" title="No stays awaiting verification." />
+              <div className="space-y-3 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Total listings</span>
+                  <span className="font-semibold text-foreground-950">{summary.totalProperties}</span>
                 </div>
-              ) : (
-                <ul className="divide-y divide-background-100">
-                  {pendingStays.slice(0, 5).map((stay) => (
-                    <li key={stay.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <div className="min-w-0 flex-1">
-                        <Link to={`/admin/stays/${stay.id}`} className="block truncate text-sm font-semibold text-foreground-950 hover:text-primary-700">
-                          {stay.title}
-                        </Link>
-                        <p className="truncate text-xs text-foreground-500">
-                          {[stay.area?.name, stay.destination?.name].filter(Boolean).join(', ') || 'No location'}
-                          {stay.host_name ? ` · ${stay.host_name}` : ''}
-                        </p>
-                      </div>
-                      <Badge tone="secondary" icon="ri-time-line">Pending</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Pending</span>
+                  <span className="font-semibold text-foreground-950">{summary.pendingListings}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Sold</span>
+                  <span className="font-semibold text-foreground-950">{summary.soldProperties}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Rented</span>
+                  <span className="font-semibold text-foreground-950">{summary.rentedProperties}</span>
+                </div>
+              </div>
             </Card>
 
             <Card
-              title="Recent Bookings"
-              icon="ri-history-line"
-              actions={
-                <Link to="/admin/bookings" className={`${btnSmall} border-background-300 text-foreground-700 hover:bg-background-100`}>
-                  View all
-                </Link>
-              }
+              title="Stays operations"
+              icon="ri-hotel-line"
+              actions={<Link to="/admin/stays-dashboard" className={btnSmall}>Overview</Link>}
               bodyClassName="p-0"
             >
-              {recentBookings.length === 0 ? (
-                <div className="p-5">
-                  <EmptyState compact icon="ri-inbox-line" title="No bookings yet." />
+              <div className="space-y-3 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Active bookings</span>
+                  <span className="font-semibold text-foreground-950">{summary.activeBookings}</span>
                 </div>
-              ) : (
-                <ul className="divide-y divide-background-100">
-                  {recentBookings.map((booking) => (
-                    <li key={booking.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <div className="min-w-0 flex-1">
-                        <Link to={`/admin/bookings/${booking.id}`} className="block truncate text-sm font-semibold text-foreground-950 hover:text-primary-700">
-                          {booking.guest_name}
-                        </Link>
-                        <p className="truncate text-xs text-foreground-500">
-                          {booking.stay?.title ?? '—'} · {booking.check_in} → {booking.check_out}
-                        </p>
-                      </div>
-                      <span className="whitespace-nowrap text-sm font-semibold text-primary-700">
-                        {formatPKR(booking.total, booking.currency)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Upcoming check-ins</span>
+                  <span className="font-semibold text-foreground-950">{summary.upcomingCheckIns}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Pending verification</span>
+                  <span className="font-semibold text-foreground-950">{summary.pendingStays}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground-600">Booking revenue</span>
+                  <span className="font-semibold text-primary-700">{formatPKR(summary.bookingRevenue)}</span>
+                </div>
+              </div>
             </Card>
           </div>
         </div>
@@ -289,3 +290,4 @@ export default function AdminStaysDashboardPage() {
     </AdminLayout>
   );
 }
+

@@ -15,7 +15,7 @@ export default function AdminLoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && isAdmin) {
-    return <Navigate to="/admin/stays" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

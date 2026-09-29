@@ -21,7 +21,7 @@ export default function AdminPlaceholderPage({
           title={`${title} will appear here`}
           message={message}
           action={
-            <Link to="/admin/stays-dashboard" className={btnPrimary}>
+            <Link to="/admin/dashboard" className={btnPrimary}>
               <i className="ri-dashboard-3-line text-base"></i> Back to dashboard
             </Link>
           }
